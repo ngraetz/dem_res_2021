@@ -28,20 +28,21 @@ cj_surv <- readRDS(paste0(repo,'/clean_psid_data.RDS'))
 ## KM function
 km_curve_plot <- function(i, d=cj_surv, plot_ci=F, return='gg', ref_cat='race_eth=White, as.factor(get(edu_var))=4', custom_ylimits=NULL, drop_hispanic=FALSE) {
   v <- arg_table[i,v]
+  assign("v", v, envir=globalenv())
   target_sex <- arg_table[i,target_sex]
   target_edu <- arg_table[i,target_edu]
   target_weight <- arg_table[i,target_weight]
   if(target_weight=='Longitudinal weight') {
     weight_var <- 'svywt_orig_cds'
-    cj_surv_sub <- d[race_eth %in% c('White','Black','Hispanic') & !is.na(get(weight_var)) & id_tas %in% cds$id,]
+    cj_surv_sub <- d[race_eth %in% c('White','Black','Hispanic') & !is.na(get(weight_var)),]
   }
   if(target_weight=='Back fill weight') {
     weight_var <- 'full_long_weight'
-    cj_surv_sub <- d[race_eth %in% c('White','Black','Hispanic') & !is.na(get(weight_var)) & id_tas %in% cds$id,]
+    cj_surv_sub <- d[race_eth %in% c('White','Black','Hispanic') & !is.na(get(weight_var)),]
   }
   if(target_weight=='CDS1997 weight') {
     weight_var <- 'cds1997_weight'
-    cj_surv_sub <- d[race_eth %in% c('White','Black','Hispanic') & !is.na(get(weight_var)) & id_tas %in% cds$id,]
+    cj_surv_sub <- d[race_eth %in% c('White','Black','Hispanic') & !is.na(get(weight_var)),]
   }
   message(target_edu)
   edu_var <- 'none'
@@ -51,6 +52,7 @@ km_curve_plot <- function(i, d=cj_surv, plot_ci=F, return='gg', ref_cat='race_et
   if(target_edu=='Maternal edu detailed') edu_var <- 'mom_edu'
   if(target_edu=='Highest education') edu_var <- 'highest_edu_agg'
   if(target_edu=='Highest edu detailed') edu_var <- 'highest_edu'
+  assign("edu_var", edu_var, envir=globalenv())
   if(target_edu!='AllEdu') {
     ## Weighted KM
     message(edu_var)
@@ -64,7 +66,6 @@ km_curve_plot <- function(i, d=cj_surv, plot_ci=F, return='gg', ref_cat='race_et
   }
   if(target_edu=='AllEdu') {
     ## Weighted KM
-    message(edu_var)
     mort <- survfit(Surv(get(paste0('ta_cj_f_',v,'_age')),get(v)) ~ race_eth,
                     data=cj_surv_sub,
                     weights=get(weight_var))
@@ -89,7 +90,9 @@ km_curve_plot <- function(i, d=cj_surv, plot_ci=F, return='gg', ref_cat='race_et
   if(plot_ci) ylimits <- c(0,1-min(mort$lower[mort$time==26]))
   if(!plot_ci) ylimits <- c(0,1-min(mort$surv[mort$time==28]))
   if(!is.null(custom_ylimits)) ylimits <- custom_ylimits
-  km_plot <- function(km_fit,edu_var) {
+  km_plot <- function(km_fit,edu_var,v) {
+    message('km_plot')
+    message(v)
     ggsurvplot(km_fit,
                fun='event',
                data = cj_surv_sub,
@@ -107,9 +110,9 @@ km_curve_plot <- function(i, d=cj_surv, plot_ci=F, return='gg', ref_cat='race_et
                break.time.by = 2,
                ggtheme = theme_bw())
   }
-  gg <- km_plot(mort,edu_var)
+  gg <- km_plot(mort,edu_var,v)
   gg <- gg + labs(x='Age',y='Cumulative risk')
-  gg_unweighted <- km_plot(mort_unweighted,edu_var)
+  gg_unweighted <- km_plot(mort_unweighted,edu_var,v)
   ## Grab unweighted sample size table.
   gg$table <- gg_unweighted$table
   ## Add title.
